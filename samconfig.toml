@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "feed-discapacidad-stack"
+s3_bucket = ""
+s3_prefix = "feed-discapacidad-stack"
+region = "eu-west-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "DatabaseUrl=\"postgres://Antonio:u7pBI5aFEcm1sLpKI37x@feed-discapacidad-db.cz2ka4yogb9p.eu-west-1.rds.amazonaws.com:5432/postgres\" JwtSecret=\"un_jwt_super_seguro_xEj_Mzv38\""

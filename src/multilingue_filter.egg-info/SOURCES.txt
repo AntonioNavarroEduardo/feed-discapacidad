@@ -1,0 +1,14 @@
+setup.py
+src/multilingue/__init__.py
+src/multilingue/config/__init__.py
+src/multilingue/config/settings.py
+src/multilingue/core/__init__.py
+src/multilingue/core/feed_generator.py
+src/multilingue/core/filtro_multilingue.py
+src/multilingue/utils/__init__.py
+src/multilingue/utils/helpers.py
+src/multilingue_filter.egg-info/PKG-INFO
+src/multilingue_filter.egg-info/SOURCES.txt
+src/multilingue_filter.egg-info/dependency_links.txt
+src/multilingue_filter.egg-info/requires.txt
+src/multilingue_filter.egg-info/top_level.txt
