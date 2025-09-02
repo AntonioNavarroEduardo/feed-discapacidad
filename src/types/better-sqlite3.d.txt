@@ -1,0 +1,18 @@
+declare module 'better-sqlite3' {
+  interface Database {
+    prepare(sql: string): Statement;
+  }
+  
+  interface Statement {
+    run(...params: any[]): void;
+    all(...params: any[]): any[];
+  }
+  
+  interface DatabaseConstructor {
+    new (path: string): Database;
+    default: DatabaseConstructor;
+  }
+  
+  const Database: DatabaseConstructor;
+  export = Database;
+}

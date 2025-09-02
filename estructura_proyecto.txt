@@ -1,0 +1,36 @@
+# Ir al directorio donde estará el proyecto
+cd /ruta/absoluta/donde/quieres/feed-discapacidad
+
+# Crear el directorio raíz
+mkdir feed-discapacidad
+cd feed-discapacidad
+
+# Crear subcarpetas principales
+mkdir src config scripts tests docs data logs dist
+
+# Crear subcarpetas dentro de src
+mkdir src/algos src/lib src/models src/services
+
+# Crear archivos de configuración y documentación
+touch .env.example .env .gitignore tsconfig.json README.md
+
+# Crear archivos principales de código
+touch src/index.ts src/server.ts
+
+# Crear archivos de algoritmos
+touch src/algos/filtro-espanol.ts src/algos/filtro-discapacidad.ts src/algos/index.ts
+
+# Crear librerías y modelos
+touch src/lib/database.ts src/lib/logger.ts
+touch src/models/post.ts src/models/feed.ts
+
+# Crear servicios
+touch src/services/bluesky.ts src/services/feed-generator.ts
+
+# Crear archivos de configuración y keywords
+touch config/keywords.json
+
+# Crear scripts de automatización
+touch scripts/publishFeedGen.ts scripts/test-language.ts scripts/test-keywords.ts
+
+# ¡Listo! Estructura generada como rutas absolutas desde el sistema de archivos

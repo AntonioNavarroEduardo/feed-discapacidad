@@ -1,0 +1,120 @@
+name: Production Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'canary'
+        type: choice
+        options:
+        - canary
+        - blue-green
+      traffic_percentage:
+        description: 'Initial traffic percentage for canary'
+        required: false
+        default: '10'
+        type: string
+
+env:
+  AWS_REGION: eu-west-1
+  ENVIRONMENT: prod
+
+jobs:
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify staging health
+        run: |
+          cd infra
+          terraform workspace select staging
+          STAGING_API_URL=$(terraform output -raw api_gateway_url)
+          curl -f "$STAGING_API_URL/health" || exit 1
+
+      - name: Run load tests on staging
+        run: |
+          chmod +x scripts/load-test-staging.sh
+          ./scripts/load-test-staging.sh
+
+  production-deployment:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to production
+        run: |
+          chmod +x scripts/production-deployment.sh
+          ./scripts/production-deployment.sh ${{ github.event.inputs.deployment_strategy }} ${{ github.event.inputs.traffic_percentage }}
+
+      - name: Post-deployment verification
+        run: |
+          cd infra
+          terraform workspace select prod
+          PROD_API_URL=$(terraform output -raw api_gateway_url)
+          ./scripts/test-deployment.sh "$PROD_API_URL"
+
+      - name: Create deployment record
+        run: |
+          echo "Deployment completed successfully" > deployment-record.txt
+          echo "Strategy: ${{ github.event.inputs.deployment_strategy }}" >> deployment-record.txt
+          echo "Timestamp: $(date)" >> deployment-record.txt
+          echo "Commit: ${{ github.sha }}" >> deployment-record.txt
+
+  rollback-on-failure:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: production-deployment
+    if: failure()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Execute rollback
+        run: |
+          chmod +x scripts/rollback.sh
+          ./scripts/rollback.sh previous
+
+      - name: Notify rollback
+        run: |
+          echo "🚨 Rollback ejecutado debido a falla en deployment"
+          # Añadir notificación a Slack/Teams/Email

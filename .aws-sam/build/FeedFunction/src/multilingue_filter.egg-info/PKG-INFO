@@ -1,7 +1,0 @@
-Metadata-Version: 2.1
-Name: multilingue-filter
-Version: 1.0.0
-Requires-Dist: fasttext>=0.9.2
-Requires-Dist: pytest>=7.0.0
-Requires-Dist: pytest-cov>=4.0.0
-Requires-Dist: langdetect>=1.0.9

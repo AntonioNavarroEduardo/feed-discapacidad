@@ -1,4 +1,0 @@
-GET /v1/feed HTTP/1.1
-Host: api.feeddiscapacidad.com
-Authorization: Bearer <token>
-Accept: application/json

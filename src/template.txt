@@ -1,0 +1,267 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Feed Discapacidad API with multilingual support
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  FeedApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: Feed Discapacidad API
+          description: API para generación de feeds accesibles y multiidioma
+          version: 1.0.0
+          contact:
+            name: Antonio Navarro
+            email: antonio@example.com
+        servers:
+          - url: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'
+        paths:
+          /health:
+            get:
+              summary: Health check endpoint
+              description: Verificar el estado de la API
+              responses:
+                '200':
+                  description: API funcionando correctamente
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: "healthy"
+                          timestamp:
+                            type: string
+                            format: date-time
+          /feeds:
+            get:
+              summary: Obtener lista de feeds
+              description: Retorna todos los feeds disponibles con soporte multiidioma
+              parameters:
+                - name: lang
+                  in: query
+                  description: Idioma del contenido (es, en, fr, ca)
+                  required: false
+                  schema:
+                    type: string
+                    enum: [es, en, fr, ca]
+                    default: es
+                - name: category
+                  in: query
+                  description: Categoría de discapacidad
+                  required: false
+                  schema:
+                    type: string
+                    enum: [motriz, visual, auditiva, cognitiva, multiple]
+              responses:
+                '200':
+                  description: Lista de feeds obtenida exitosamente
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          feeds:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Feed'
+                          total:
+                            type: integer
+                          page:
+                            type: integer
+                '400':
+                  description: Parámetros inválidos
+                '500':
+                  description: Error interno del servidor
+            post:
+              summary: Crear nuevo feed
+              description: Crear un nuevo feed con contenido accesible
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/NewFeed'
+              responses:
+                '201':
+                  description: Feed creado exitosamente
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/Feed'
+                '400':
+                  description: Datos de entrada inválidos
+                '500':
+                  description: Error interno del servidor
+          /feeds/{feedId}:
+            get:
+              summary: Obtener feed específico
+              description: Retorna un feed específico por ID
+              parameters:
+                - name: feedId
+                  in: path
+                  required: true
+                  description: ID único del feed
+                  schema:
+                    type: string
+                - name: lang
+                  in: query
+                  description: Idioma del contenido
+                  schema:
+                    type: string
+                    enum: [es, en, fr, ca]
+                    default: es
+              responses:
+                '200':
+                  description: Feed encontrado
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/Feed'
+                '404':
+                  description: Feed no encontrado
+                '500':
+                  description: Error interno del servidor
+        components:
+          schemas:
+            Feed:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: ID único del feed
+                title:
+                  type: string
+                  description: Título del feed
+                description:
+                  type: string
+                  description: Descripción del contenido
+                category:
+                  type: string
+                  enum: [motriz, visual, auditiva, cognitiva, multiple]
+                language:
+                  type: string
+                  enum: [es, en, fr, ca]
+                content:
+                  type: string
+                  description: Contenido del feed en formato accesible
+                metadata:
+                  type: object
+                  properties:
+                    accessibility_features:
+                      type: array
+                      items:
+                        type: string
+                    alt_text_available:
+                      type: boolean
+                    audio_description:
+                      type: boolean
+                created_at:
+                  type: string
+                  format: date-time
+                updated_at:
+                  type: string
+                  format: date-time
+            NewFeed:
+              type: object
+              required:
+                - title
+                - content
+                - category
+              properties:
+                title:
+                  type: string
+                  description: Título del feed
+                content:
+                  type: string
+                  description: Contenido del feed
+                category:
+                  type: string
+                  enum: [motriz, visual, auditiva, cognitiva, multiple]
+                language:
+                  type: string
+                  enum: [es, en, fr, ca]
+                  default: es
+                metadata:
+                  type: object
+                  properties:
+                    accessibility_features:
+                      type: array
+                      items:
+                        type: string
+                    alt_text_available:
+                      type: boolean
+                    audio_description:
+                      type: boolean
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.handlers.health.lambda_handler
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref FeedApi
+            Path: /health
+            Method: get
+
+  FeedsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.handlers.feeds.lambda_handler
+      Events:
+        GetFeeds:
+          Type: Api
+          Properties:
+            RestApiId: !Ref FeedApi
+            Path: /feeds
+            Method: get
+        PostFeeds:
+          Type: Api
+          Properties:
+            RestApiId: !Ref FeedApi
+            Path: /feeds
+            Method: post
+        GetFeedById:
+          Type: Api
+          Properties:
+            RestApiId: !Ref FeedApi
+            Path: /feeds/{feedId}
+            Method: get
+
+Outputs:
+  FeedApiUrl:
+    Description: "URL de la API"
+    Value: !Sub "https://${FeedApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
+  
+  FeedApiDocsUrl:
+    Description: "URL de la documentación de la API"
+    Value: !Sub "https://${FeedApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/docs"

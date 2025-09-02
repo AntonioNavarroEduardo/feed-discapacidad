@@ -1,0 +1,13 @@
+declare module '@atproto/api' {
+  export class Client {
+    constructor();
+    login(params: { identifier: string; password: string }): Promise<any>;
+    app: {
+      bsky: {
+        feed: {
+          getAuthorFeed(params: { actor: string; limit: number }): Promise<any>;
+        }
+      }
+    };
+  }
+}
