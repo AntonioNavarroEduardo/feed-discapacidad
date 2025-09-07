@@ -1,52 +1,54 @@
 import { getCursor, upsertCursor, insertPost } from '../lib/database';
-import { AtpAgent } from '@atproto/api';
 import { detectarIdioma } from '../algos/filtro-espanol';
 import { esRelevante } from '../algos/filtro-discapacidad';
-
-const agent = new AtpAgent({ service: 'https://bsky.social' });
+import { getDiscapacidadFeed } from '../lib/bluesky';
 
 export async function fetchAndStoreFeed(did: string): Promise<void> {
   try {
     const lastCursor = getCursor(did);
     
-    // Simulamos datos ya que necesitaríamos autenticación real para Bluesky
-    const mockPosts = [
-      {
-        post: {
-          uri: 'at://example.com/post/1',
-          author: { did: 'did:example:author1' },
-          record: { 
-            text: 'Información sobre accesibilidad en espacios públicos',
-            lang: 'es',
-            createdAt: new Date().toISOString()
-          },
-          indexedAt: new Date().toISOString()
-        }
-      }
-    ];
-
-    for (const item of mockPosts) {
-      const record = item.post.record;
-      const text = record.text;
+    console.log('🔍 Obteniendo posts reales de Bluesky...');
+    
+    // Reemplazar mockPosts por datos reales
+    const realPosts = await getDiscapacidadFeed();
+    
+    console.log(`📊 Procesando ${realPosts.length} posts encontrados...`);
+    
+    let postsInserted = 0;
+    
+    for (const item of realPosts) {
+      const text = item.text;
+      const lang = detectarIdioma(text);
       
-      if (detectarIdioma(text) === 'spa' && esRelevante(text)) {
-        insertPost({
-          id: item.post.uri,
-          did,
-          author: item.post.author.did,
-          content: text,
-          lang: record.lang || 'es',
-          createdAt: record.createdAt,
-        });
+      // Aplicar filtros: idioma español y relevancia para discapacidad
+      if (lang === 'spa' && esRelevante(text)) {
+        try {
+          insertPost({
+            id: item.uri,
+            did,
+            author: item.author.did,
+            content: text,
+            lang: 'es',
+            createdAt: item.createdAt,
+          });
+          postsInserted++;
+        } catch (error) {
+          // Ignorar errores de duplicados (UNIQUE constraint)
+          if (!error.message?.includes('UNIQUE constraint')) {
+            console.error('Error insertando post:', error);
+          }
+        }
       }
     }
     
-    // Simular nuevo cursor
+    console.log(`✅ Se insertaron ${postsInserted} posts relevantes en español`);
+    
+    // Actualizar cursor con timestamp actual
     const newCursor = `cursor_${Date.now()}`;
     upsertCursor(did, newCursor);
     
   } catch (error) {
-    console.error('Error fetching feed:', error);
+    console.error('❌ Error fetching feed:', error);
     throw error;
   }
 }

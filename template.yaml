@@ -3,35 +3,22 @@ Transform: AWS::Serverless-2016-10-31
 
 Globals:
   Function:
-    Timeout: 10
-    Runtime: nodejs18.x
-    MemorySize: 128
+    Runtime: nodejs20.x
+    Environment:
+      Variables:
+        BLUESKY_IDENTIFIER: antonio--navarro.bsky.social
+        BLUESKY_PASSWORD: abdz-ahm4-et2c-sw5q
+        BLUESKY_DID: did:plc:s664a67tdmo7hrihp3d44zi5
 
 Resources:
-  FeedFunction:
+  FetchFeedFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handler.handler
+      CodeUri: src/
+      Handler: lambda/fetchFeed.handler
       Events:
-        FeedApi:
-          Type: Api
+        ScheduledFetch:
+          Type: Schedule
           Properties:
-            Path: /feed
-            Method: get
-      Environment:
-        Variables:
-          DATABASE_URL: !Ref DatabaseUrl
-          JWT_SECRET: !Ref JwtSecret
-
-Parameters:
-  DatabaseUrl:
-    Type: String
-    Description: URL de conexión a la base de datos
-  JwtSecret:
-    Type: String
-    Description: Secreto para JWT
-
-Outputs:
-  FeedApiUrl:
-    Description: "URL del endpoint GET /feed"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/feed"
+            Schedule: rate(1 hour)
+            Enabled: true
